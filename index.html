@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast App</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <h1><i class="fas fa-cloud-sun"></i> Weather Forecast</h1>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="search-container">
+                <input type="text" id="location-input" placeholder="Enter city name..." class="search-input">
+                <button id="search-btn" class="search-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button id="current-location-btn" class="location-btn" title="Use current location">
+                    <i class="fas fa-location-arrow"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Current Location Display -->
+        <section class="location-info">
+            <div class="location-display">
+                <h2 id="current-location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="city-name">Enter a location</span>
+                </h2>
+                <p id="current-date"></p>
+            </div>
+        </section>
+
+        <!-- Current Weather Section -->
+        <section class="current-weather">
+            <div class="weather-main">
+                <div class="weather-icon">
+                    <i id="main-weather-icon" class="fas fa-question"></i>
+                </div>
+                <div class="weather-temp">
+                    <span id="main-temperature">--°</span>
+                    <div class="temp-unit">
+                        <button id="celsius-btn" class="unit-btn active">°C</button>
+                        <button id="fahrenheit-btn" class="unit-btn">°F</button>
+                    </div>
+                </div>
+                <div class="weather-description">
+                    <span id="weather-condition">Weather condition</span>
+                    <span id="feels-like">Feels like --°</span>
+                </div>
+            </div>
+            
+            <!-- Weather Details -->
+            <div class="weather-details">
+                <div class="detail-item">
+                    <i class="fas fa-eye"></i>
+                    <span class="detail-label">Visibility</span>
+                    <span id="visibility" class="detail-value">-- km</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-tint"></i>
+                    <span class="detail-label">Humidity</span>
+                    <span id="humidity" class="detail-value">--%</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-wind"></i>
+                    <span class="detail-label">Wind</span>
+                    <span id="wind-speed" class="detail-value">-- km/h</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-thermometer-half"></i>
+                    <span class="detail-label">Pressure</span>
+                    <span id="pressure" class="detail-value">-- hPa</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-sun"></i>
+                    <span class="detail-label">UV Index</span>
+                    <span id="uv-index" class="detail-value">--</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-cloud"></i>
+                    <span class="detail-label">Clouds</span>
+                    <span id="clouds" class="detail-value">--%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hourly Forecast Section -->
+        <section class="hourly-forecast">
+            <h3><i class="fas fa-clock"></i> Hourly Forecast</h3>
+            <div class="hourly-container" id="hourly-container">
+                <!-- Hourly forecast items will be dynamically generated -->
+                <div class="hourly-item placeholder">
+                    <span class="hour">--:--</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="hourly-temp">--°</span>
+                </div>
+                <div class="hourly-item placeholder">
+                    <span class="hour">--:--</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="hourly-temp">--°</span>
+                </div>
+                <div class="hourly-item placeholder">
+                    <span class="hour">--:--</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="hourly-temp">--°</span>
+                </div>
+                <div class="hourly-item placeholder">
+                    <span class="hour">--:--</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="hourly-temp">--°</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Daily Forecast Section -->
+        <section class="daily-forecast">
+            <h3><i class="fas fa-calendar-alt"></i> 5-Day Forecast</h3>
+            <div class="daily-container" id="daily-container">
+                <!-- Daily forecast items will be dynamically generated -->
+                <div class="daily-item placeholder">
+                    <span class="day">Day</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="daily-desc">Condition</span>
+                    <span class="daily-temp">
+                        <span class="high">--°</span>
+                        <span class="low">--°</span>
+                    </span>
+                </div>
+                <div class="daily-item placeholder">
+                    <span class="day">Day</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="daily-desc">Condition</span>
+                    <span class="daily-temp">
+                        <span class="high">--°</span>
+                        <span class="low">--°</span>
+                    </span>
+                </div>
+                <div class="daily-item placeholder">
+                    <span class="day">Day</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="daily-desc">Condition</span>
+                    <span class="daily-temp">
+                        <span class="high">--°</span>
+                        <span class="low">--°</span>
+                    </span>
+                </div>
+                <div class="daily-item placeholder">
+                    <span class="day">Day</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="daily-desc">Condition</span>
+                    <span class="daily-temp">
+                        <span class="high">--°</span>
+                        <span class="low">--°</span>
+                    </span>
+                </div>
+                <div class="daily-item placeholder">
+                    <span class="day">Day</span>
+                    <i class="fas fa-question weather-icon-small"></i>
+                    <span class="daily-desc">Condition</span>
+                    <span class="daily-temp">
+                        <span class="high">--°</span>
+                        <span class="low">--°</span>
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading and Error States -->
+        <div id="loading" class="loading hidden">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Loading weather data...</span>
+        </div>
+
+        <div id="error-message" class="error-message hidden">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="error-text">Unable to fetch weather data</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
