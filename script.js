@@ -12,20 +12,24 @@ const celsiusBtn = document.getElementById('celsius-btn');
 const fahrenheitBtn = document.getElementById('fahrenheit-btn');
 const hourlyContainer = document.getElementById('hourly-container');
 const dailyContainer = document.getElementById('daily-container');
+const iranianCitySelector = document.getElementById('iranian-city-selector');
+const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+const themeToggle = document.getElementById('theme-toggle');
 const loadingElement = document.getElementById('loading');
 const errorElement = document.getElementById('error-message');
 const errorText = document.getElementById('error-text');
 
-// Step 5: Iranian City Selector DOM Element
-const iranianCitySelector = document.getElementById('iranian-city-selector');
-
-// Weather details elements
-const visibilityElement = document.getElementById('visibility');
-const humidityElement = document.getElementById('humidity');
-const windSpeedElement = document.getElementById('wind-speed');
-const pressureElement = document.getElementById('pressure');
-const uvIndexElement = document.getElementById('uv-index');
-const cloudsElement = document.getElementById('clouds');
+// Weather detail elements
+const detailElements = {
+    humidity: document.getElementById('humidity'),
+    windSpeed: document.getElementById('wind-speed'),
+    windDirection: document.getElementById('wind-direction'),
+    pressure: document.getElementById('pressure'),
+    visibility: document.getElementById('visibility'),
+    uvIndex: document.getElementById('uv-index'),
+    sunrise: document.getElementById('sunrise'),
+    sunset: document.getElementById('sunset')
+};
 
 // Global variables
 let currentWeatherData = null;
@@ -35,6 +39,13 @@ let userIPLocation = null; // Store IP-based location data
 let refinedLocation = null; // Store refined Iranian provincial capital
 let geolocationAttempted = false; // Track if geolocation was attempted
 let selectedIranianCity = null; // Store manually selected Iranian city
+let selectedHourlyIndex = -1; // Track selected hourly item
+
+// Autocomplete variables
+let autocompleteTimeout = null;
+let selectedSuggestionIndex = -1;
+let currentSuggestions = [];
+let isAutocompleteVisible = false;
 
 // Step 6: Weather API Configuration
 const WEATHER_API_CONFIG = {
@@ -138,10 +149,27 @@ const weatherIcons = {
     '50n': 'fas fa-smog'           // mist night
 };
 
+// Country flag emojis for autocomplete
+const COUNTRY_FLAGS = {
+    'IR': '🇮🇷', 'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺', 'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸', 'NL': '🇳🇱',
+    'BE': '🇧🇪', 'CH': '🇨🇭', 'AT': '🇦🇹', 'SE': '🇸🇪', 'NO': '🇳🇴', 'DK': '🇩🇰', 'FI': '🇫🇮', 'PL': '🇵🇱', 'CZ': '🇨🇿', 'SK': '🇸🇰',
+    'HU': '🇭🇺', 'RO': '🇷🇴', 'BG': '🇧🇬', 'HR': '🇭🇷', 'SI': '🇸🇮', 'RS': '🇷🇸', 'BA': '🇧🇦', 'MK': '🇲🇰', 'AL': '🇦🇱', 'ME': '🇲🇪',
+    'GR': '🇬🇷', 'TR': '🇹🇷', 'CY': '🇨🇾', 'MT': '🇲🇹', 'PT': '🇵🇹', 'LU': '🇱🇺', 'IE': '🇮🇪', 'IS': '🇮🇸', 'LI': '🇱🇮', 'MC': '🇲🇨',
+    'SM': '🇸🇲', 'VA': '🇻🇦', 'AD': '🇦🇩', 'RU': '🇷🇺', 'UA': '🇺🇦', 'BY': '🇧🇾', 'MD': '🇲🇩', 'LT': '🇱🇹', 'LV': '🇱🇻', 'EE': '🇪🇪',
+    'CN': '🇨🇳', 'JP': '🇯🇵', 'KR': '🇰🇷', 'IN': '🇮🇳', 'PK': '🇵🇰', 'AF': '🇦🇫', 'BD': '🇧🇩', 'LK': '🇱🇰', 'MV': '🇲🇻', 'NP': '🇳🇵',
+    'BT': '🇧🇹', 'TH': '🇹🇭', 'MY': '🇲🇾', 'SG': '🇸🇬', 'ID': '🇮🇩', 'PH': '🇵🇭', 'VN': '🇻🇳', 'KH': '🇰🇭', 'LA': '🇱🇦', 'MM': '🇲🇲',
+    'BR': '🇧🇷', 'AR': '🇦🇷', 'CL': '🇨🇱', 'PE': '🇵🇪', 'CO': '🇨🇴', 'VE': '🇻🇪', 'UY': '🇺🇾', 'PY': '🇵🇾', 'BO': '🇧🇴', 'EC': '🇪🇨',
+    'MX': '🇲🇽', 'GT': '🇬🇹', 'BZ': '🇧🇿', 'SV': '🇸🇻', 'HN': '🇭🇳', 'NI': '🇳🇮', 'CR': '🇨🇷', 'PA': '🇵🇦', 'CU': '🇨🇺', 'JM': '🇯🇲',
+    'EG': '🇪🇬', 'SA': '🇸🇦', 'AE': '🇦🇪', 'QA': '🇶🇦', 'BH': '🇧🇭', 'KW': '🇰🇼', 'OM': '🇴🇲', 'YE': '🇾🇪', 'JO': '🇯🇴', 'LB': '🇱🇧',
+    'SY': '🇸🇾', 'IQ': '🇮🇶', 'IL': '🇮🇱', 'PS': '🇵🇸', 'ZA': '🇿🇦', 'NG': '🇳🇬', 'KE': '🇰🇪', 'ET': '🇪🇹', 'MA': '🇲🇦', 'DZ': '🇩🇿',
+    'TN': '🇹🇳', 'LY': '🇱🇾', 'SD': '🇸🇩', 'GH': '🇬🇭', 'CI': '🇨🇮', 'SN': '🇸🇳', 'ML': '🇲🇱', 'BF': '🇧🇫', 'NE': '🇳🇪', 'TD': '🇹🇩'
+};
+
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
     updateCurrentDate();
     setupEventListeners();
+    initializeTheme(); // Initialize theme
     
     // Check API key configuration
     checkWeatherAPIConfiguration();
@@ -191,6 +219,17 @@ function setupEventListeners() {
     
     // Step 5: Add event listener for Iranian city selector
     iranianCitySelector.addEventListener('change', handleIranianCitySelection);
+    
+    // Autocomplete event listeners
+    locationInput.addEventListener('input', handleAutocompleteInput);
+    locationInput.addEventListener('keydown', handleAutocompleteKeydown);
+    locationInput.addEventListener('focus', handleAutocompleteFocus);
+    
+    // Click outside to close autocomplete
+    document.addEventListener('click', handleClickOutside);
+    
+    // Theme toggle event listener
+    themeToggle.addEventListener('click', toggleTheme);
 }
 
 // Step 5: Populate the Iranian city selector dropdown
@@ -267,15 +306,8 @@ function displayManuallySelectedCity(cityData) {
     cityNameElement.innerHTML = `
         <div style="text-align: center;">
             <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                <i class="fas fa-hand-pointer" style="color: #00b894; margin-right: 8px;"></i>
                 <span style="font-size: 1.1em; font-weight: 500;">${cityData.name}</span>
                 <span style="opacity: 0.7; margin-left: 5px;">(${cityData.province})</span>
-            </div>
-            <div style="font-size: 0.75em; opacity: 0.8; line-height: 1.4;">
-                🎯 Manually selected from dropdown<br>
-                📍 Coordinates: ${cityData.lat.toFixed(4)}°, ${cityData.lon.toFixed(4)}°<br>
-                👥 Population: ${cityData.population.toLocaleString()}<br>
-                🏛️ Provincial capital of ${cityData.province}
             </div>
         </div>
     `;
@@ -548,15 +580,8 @@ function displayGPSRefinedLocation(gpsData, closestCapital) {
     cityNameElement.innerHTML = `
         <div style="text-align: center;">
             <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                <i class="fas fa-satellite" style="color: #27ae60; margin-right: 8px;"></i>
                 <span style="font-size: 1.1em; font-weight: 500;">${closestCapital.name}</span>
                 <span style="opacity: 0.7; margin-left: 5px;">(${closestCapital.province})</span>
-            </div>
-            <div style="font-size: 0.75em; opacity: 0.8; line-height: 1.4;">
-                🎯 Refined from precise GPS location<br>
-                📍 GPS: ${gpsData.latitude.toFixed(4)}°, ${gpsData.longitude.toFixed(4)}°<br>
-                📏 Distance: ${closestCapital.distanceKm}km to capital<br>
-                🎯 Accuracy: ${accuracy}m (${accuracyText})
             </div>
         </div>
     `;
@@ -578,13 +603,7 @@ function displayGPSLocation(gpsData) {
     cityNameElement.innerHTML = `
         <div style="text-align: center;">
             <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                <i class="fas fa-satellite" style="color: #27ae60; margin-right: 8px;"></i>
                 <span style="font-size: 1.1em; font-weight: 500;">GPS Location</span>
-            </div>
-            <div style="font-size: 0.75em; opacity: 0.8; line-height: 1.4;">
-                📍 ${gpsData.latitude.toFixed(4)}°N, ${gpsData.longitude.toFixed(4)}°E<br>
-                🎯 Accuracy: ${accuracy}m (${accuracyText})<br>
-                ⏰ ${new Date(gpsData.timestamp).toLocaleTimeString()}
             </div>
         </div>
     `;
@@ -723,15 +742,8 @@ function displayRefinedLocation(originalLocation, closestCapital) {
     cityNameElement.innerHTML = `
         <div style="text-align: center;">
             <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
-                <i class="fas fa-map-marker-alt" style="color: #ffeaa7; margin-right: 8px;"></i>
                 <span style="font-size: 1.1em; font-weight: 500;">${closestCapital.name}</span>
                 <span style="opacity: 0.7; margin-left: 5px;">(${closestCapital.province})</span>
-            </div>
-            <div style="font-size: 0.75em; opacity: 0.8; line-height: 1.4;">
-                🎯 Refined to closest Iranian capital<br>
-                📍 Original: ${originalText}<br>
-                📏 Distance: ${closestCapital.distanceKm}km away<br>
-                🌐 IP: ${originalLocation.ip}
             </div>
         </div>
     `;
@@ -818,7 +830,6 @@ async function fetchIPLocationBackup(apiUrl) {
 function displayIPLocation(locationData) {
     const locationText = `${locationData.city}, ${locationData.region || locationData.country}`;
     cityNameElement.innerHTML = `
-        <i class="fas fa-map-marker-alt"></i>
         <span>${locationText}</span>
         <small style="opacity: 0.7; font-size: 0.8em; display: block; margin-top: 5px;">
             📍 Auto-detected from IP: ${locationData.ip}
@@ -932,39 +943,51 @@ async function getWeatherByCoordinates(lat, lon, gpsData = null) {
     }
 }
 
-// Step 6: Fetch Comprehensive Weather Data using One Call API 3.0
-async function fetchOneCallWeatherData(lat, lon) {
+// Step 6: Main Weather Data Fetching Function
+async function fetchWeatherData(lat, lon, locationName = null) {
     try {
-        // One Call API 3.0 provides:
-        // - Current weather
-        // - 48-hour hourly forecast  
-        // - 8-day daily forecast
-        // - Weather alerts
-        const url = `${WEATHER_API_CONFIG.ONECALL_URL}${WEATHER_API_CONFIG.ENDPOINTS.ONECALL}?lat=${lat}&lon=${lon}&appid=${WEATHER_API_CONFIG.API_KEY}&units=${WEATHER_API_CONFIG.DEFAULT_PARAMS.units}&lang=${WEATHER_API_CONFIG.DEFAULT_PARAMS.lang}&exclude=minutely,alerts`;
-        
-        console.log('Calling One Call API for comprehensive weather data...');
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            // If One Call API fails, fall back to the basic APIs
-            console.warn(`One Call API error: ${response.status} ${response.statusText}, falling back to basic APIs`);
-            return await fetchBasicWeatherData(lat, lon);
+        // Check if API key is configured
+        if (WEATHER_API_CONFIG.API_KEY === 'YOUR_API_KEY_HERE') {
+            console.log('Using sample data - API key not configured');
+            return generateSampleWeatherData(locationName || 'Sample Location');
         }
+
+        console.log(`Fetching weather data for coordinates: ${lat}, ${lon}`);
         
-        const data = await response.json();
-        console.log('One Call API response received successfully');
-        return data;
-        
+        // Use basic APIs first (these work with free API keys)
+        const weatherData = await fetchBasicWeatherData(lat, lon);
+
+        if (weatherData) {
+            // Process and format the weather data
+            const processedData = weatherData;
+            processedData.location = locationName || processedData.location;
+            
+            console.log('✅ Weather data fetched successfully:', {
+                location: processedData.location,
+                temperature: `${processedData.current.temperature}°C`,
+                condition: processedData.current.condition,
+                hourlyForecast: `${processedData.hourly.length} hours`,
+                dailyForecast: `${processedData.daily.length} days`,
+                source: processedData.source
+            });
+            return processedData;
+        } else {
+            throw new Error('Failed to fetch weather data from APIs');
+        }
+
     } catch (error) {
-        console.error('Error with One Call API, falling back to basic APIs:', error);
-        return await fetchBasicWeatherData(lat, lon);
+        console.error('Weather API Error:', error);
+        
+        // Fall back to sample data if API fails
+        console.log('Falling back to sample weather data');
+        return generateSampleWeatherData(locationName || 'Sample Location');
     }
 }
 
-// Step 6: Fallback to Basic APIs if One Call API fails
+// Step 6: Fetch Weather Data using Basic APIs
 async function fetchBasicWeatherData(lat, lon) {
     try {
-        console.log('Using basic weather APIs as fallback...');
+        console.log('Fetching weather using basic APIs...');
         
         // Fetch current weather and forecast in parallel
         const [currentData, forecastData] = await Promise.all([
@@ -973,14 +996,17 @@ async function fetchBasicWeatherData(lat, lon) {
         ]);
 
         if (currentData && forecastData) {
-            // Convert basic API data to One Call format for consistency
-            return convertBasicToOneCallFormat(currentData, forecastData);
+            // Process the API responses into our format
+            const processedData = processWeatherAPIResponse(currentData, forecastData);
+            processedData.source = 'OpenWeatherMap Basic APIs';
+            return processedData;
         } else {
-            throw new Error('Both One Call API and basic APIs failed');
+            console.error('Failed to fetch from basic APIs');
+            return null;
         }
         
     } catch (error) {
-        console.error('Fallback APIs also failed:', error);
+        console.error('Error with basic APIs:', error);
         return null;
     }
 }
@@ -1274,7 +1300,6 @@ function displayWeatherData(data, isAutoDetected = false, capitalData = null) {
         } else if (!capitalData) {
             // Regular search or no capital data
             cityNameElement.innerHTML = `
-                <i class="fas fa-map-marker-alt"></i>
                 <span>${data.location}</span>
                 ${data.source === 'Sample Data' ? '<small style="opacity: 0.7; font-size: 0.8em; display: block; margin-top: 5px;">📊 Sample data - Add API key for real weather</small>' : 
                   data.source === 'OpenWeatherMap API' ? '<small style="opacity: 0.7; font-size: 0.8em; display: block; margin-top: 5px;">🌍 Real weather data</small>' : ''}
@@ -1295,12 +1320,12 @@ function displayWeatherData(data, isAutoDetected = false, capitalData = null) {
     mainWeatherIcon.className = iconClass;
     
     // Update weather details
-    visibilityElement.textContent = `${data.current.visibility} km`;
-    humidityElement.textContent = `${data.current.humidity}%`;
-    windSpeedElement.textContent = `${data.current.windSpeed} km/h`;
-    pressureElement.textContent = `${data.current.pressure} hPa`;
-    uvIndexElement.textContent = data.current.uvIndex;
-    cloudsElement.textContent = `${data.current.clouds}%`;
+    detailElements.visibility.textContent = `${data.current.visibility} km`;
+    detailElements.humidity.textContent = `${data.current.humidity}%`;
+    detailElements.windSpeed.textContent = `${data.current.windSpeed} km/h`;
+    detailElements.pressure.textContent = `${data.current.pressure} hPa`;
+    detailElements.uvIndex.textContent = data.current.uvIndex;
+    document.getElementById('clouds').textContent = `${data.current.clouds}%`;
     
     // Update forecasts
     displayHourlyForecast(data.hourly);
@@ -1340,8 +1365,8 @@ function displayWeatherData(data, isAutoDetected = false, capitalData = null) {
 function displayHourlyForecast(hourlyData) {
     hourlyContainer.innerHTML = '';
     
-    // Show next 24 hours for better UI (can be expanded to show 48)
-    const hoursToShow = Math.min(24, hourlyData.length);
+    // Show next 48 hours for comprehensive forecast
+    const hoursToShow = Math.min(48, hourlyData.length);
     const hoursData = hourlyData.slice(0, hoursToShow);
     
     // Add mobile toggle button for hourly details
@@ -1355,37 +1380,13 @@ function displayHourlyForecast(hourlyData) {
         const title = hourlyForecastSection.querySelector('h3');
         headerDiv.appendChild(title);
         
-        const toggleButton = document.createElement('button');
-        toggleButton.className = 'mobile-toggle';
-        toggleButton.innerHTML = 'Show Details <i class="fas fa-chevron-down"></i>';
-        toggleButton.setAttribute('data-expanded', 'false');
-        
-        toggleButton.addEventListener('click', function() {
-            const isExpanded = this.getAttribute('data-expanded') === 'true';
-            const hourlyDetails = hourlyContainer.querySelectorAll('.hourly-details');
-            
-            if (isExpanded) {
-                // Hide details
-                hourlyDetails.forEach(detail => detail.classList.remove('show-mobile'));
-                this.innerHTML = 'Show Details <i class="fas fa-chevron-down"></i>';
-                this.classList.remove('expanded');
-                this.setAttribute('data-expanded', 'false');
-            } else {
-                // Show details
-                hourlyDetails.forEach(detail => detail.classList.add('show-mobile'));
-                this.innerHTML = 'Hide Details <i class="fas fa-chevron-up"></i>';
-                this.classList.add('expanded');
-                this.setAttribute('data-expanded', 'true');
-            }
-        });
-        
-        headerDiv.appendChild(toggleButton);
         hourlyForecastSection.insertBefore(headerDiv, hourlyContainer);
     }
     
     hoursData.forEach((hour, index) => {
         const hourElement = document.createElement('div');
         hourElement.className = 'hourly-item enhanced';
+        hourElement.dataset.index = index;
         
         const timeString = hour.time.toLocaleTimeString('en-US', { 
             hour: 'numeric', 
@@ -1418,17 +1419,13 @@ function displayHourlyForecast(hourlyData) {
             <span class="hour">${timeString}</span>
             <i class="${iconClass} weather-icon-small"></i>
             <span class="hourly-temp">${convertTemperature(hour.temperature)}°</span>
-            <div class="hourly-details">
-                <small style="font-size: 0.7em; opacity: 0.8;">
-                    🌬️ ${hour.windSpeed}km/h<br>
-                    ☁️ ${hour.clouds}%
-                    ${weatherInfo ? `<br>${weatherInfo}` : ''}
-                </small>
-            </div>
         `;
         
         // Add detailed tooltip on hover
         hourElement.title = tooltipContent;
+        
+        // Add click event listener for showing details at bottom
+        hourElement.addEventListener('click', () => showHourlyDetails(hour, index, hourElement));
         
         // Add day separator for better UX
         if (index === 0 || hour.time.getDate() !== hoursData[index - 1].time.getDate()) {
@@ -1440,6 +1437,151 @@ function displayHourlyForecast(hourlyData) {
         
         hourlyContainer.appendChild(hourElement);
     });
+    
+    // Create hourly details panel if it doesn't exist
+    createHourlyDetailsPanel(hourlyForecastSection);
+}
+
+// Create the hourly details panel at the bottom
+function createHourlyDetailsPanel(hourlyForecastSection) {
+    // Remove existing panel if it exists
+    const existingPanel = hourlyForecastSection.querySelector('.hourly-details-panel');
+    if (existingPanel) {
+        existingPanel.remove();
+    }
+    
+    // Create new panel
+    const detailsPanel = document.createElement('div');
+    detailsPanel.className = 'hourly-details-panel';
+    detailsPanel.innerHTML = `
+        <div class="hourly-details-header">
+            <div class="hourly-details-title">
+                <i class="fas fa-info-circle"></i>
+                <span>Hourly Details</span>
+            </div>
+            <div class="hourly-details-time"></div>
+        </div>
+        <div class="hourly-details-content"></div>
+    `;
+    
+    hourlyForecastSection.appendChild(detailsPanel);
+}
+
+// Show detailed information for selected hourly item
+function showHourlyDetails(hourData, index, hourElement) {
+    const hourlyForecastSection = hourlyContainer.closest('.hourly-forecast');
+    const detailsPanel = hourlyForecastSection.querySelector('.hourly-details-panel');
+    const detailsTime = detailsPanel.querySelector('.hourly-details-time');
+    const detailsContent = detailsPanel.querySelector('.hourly-details-content');
+    
+    // Check if this item is already selected - if so, hide the panel
+    if (hourElement.classList.contains('selected')) {
+        // Hide the panel
+        detailsPanel.classList.remove('show');
+        // Remove selected state from all items
+        document.querySelectorAll('.hourly-item').forEach(item => item.classList.remove('selected'));
+        selectedHourlyIndex = -1;
+        return;
+    }
+    
+    // Update selected state
+    document.querySelectorAll('.hourly-item').forEach(item => item.classList.remove('selected'));
+    hourElement.classList.add('selected');
+    selectedHourlyIndex = index;
+    
+    // Update time display
+    detailsTime.textContent = hourData.time.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+    
+    // Get wind direction
+    const windDirection = getWindDirection(hourData.windDirection || 0);
+    
+    // Create details content
+    const detailsHTML = `
+        <div class="hourly-detail-item">
+            <i class="fas fa-thermometer-half"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Temperature</div>
+                <div class="hourly-detail-value">${convertTemperature(hourData.temperature)}°</div>
+            </div>
+        </div>
+        <div class="hourly-detail-item">
+            <i class="fas fa-thermometer-quarter"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Feels Like</div>
+                <div class="hourly-detail-value">${convertTemperature(hourData.feelsLike)}°</div>
+            </div>
+        </div>
+        <div class="hourly-detail-item">
+            <i class="fas fa-tint"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Humidity</div>
+                <div class="hourly-detail-value">${hourData.humidity}%</div>
+            </div>
+        </div>
+        <div class="hourly-detail-item">
+            <i class="fas fa-wind"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Wind</div>
+                <div class="hourly-detail-value">${hourData.windSpeed} km/h ${windDirection}</div>
+            </div>
+        </div>
+        <div class="hourly-detail-item">
+            <i class="fas fa-cloud"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Clouds</div>
+                <div class="hourly-detail-value">${hourData.clouds}%</div>
+            </div>
+        </div>
+        <div class="hourly-detail-item">
+            <i class="fas fa-thermometer-half"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Pressure</div>
+                <div class="hourly-detail-value">${hourData.pressure} hPa</div>
+            </div>
+        </div>
+        ${hourData.precipitation > 0 ? `
+        <div class="hourly-detail-item">
+            <i class="fas fa-cloud-rain"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Precipitation</div>
+                <div class="hourly-detail-value">${hourData.precipitation} mm</div>
+            </div>
+        </div>
+        ` : ''}
+        ${hourData.snow > 0 ? `
+        <div class="hourly-detail-item">
+            <i class="fas fa-snowflake"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">Snow</div>
+                <div class="hourly-detail-value">${hourData.snow} mm</div>
+            </div>
+        </div>
+        ` : ''}
+        <div class="hourly-detail-item">
+            <i class="fas fa-sun"></i>
+            <div class="hourly-detail-info">
+                <div class="hourly-detail-label">UV Index</div>
+                <div class="hourly-detail-value">${hourData.uvIndex}</div>
+            </div>
+        </div>
+    `;
+    
+    detailsContent.innerHTML = detailsHTML;
+    
+    // Show the panel with animation
+    detailsPanel.classList.add('show');
+    
+    // Scroll to the panel smoothly
+    setTimeout(() => {
+        detailsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 200);
 }
 
 // Display enhanced daily forecast (7 days)
@@ -1458,16 +1600,19 @@ function displayDailyForecast(dailyData) {
         newToggle.addEventListener('click', function() {
             const isExpanded = this.getAttribute('data-expanded') === 'true';
             const dailyDetails = dailyContainer.querySelectorAll('.daily-details');
+            const dailyItems = dailyContainer.querySelectorAll('.daily-item');
             
             if (isExpanded) {
                 // Hide details
                 dailyDetails.forEach(detail => detail.classList.remove('show-mobile'));
+                dailyItems.forEach(item => item.classList.remove('details-shown'));
                 this.innerHTML = 'Show Details <i class="fas fa-chevron-down"></i>';
                 this.classList.remove('expanded');
                 this.setAttribute('data-expanded', 'false');
             } else {
                 // Show details
                 dailyDetails.forEach(detail => detail.classList.add('show-mobile'));
+                dailyItems.forEach(item => item.classList.add('details-shown'));
                 this.innerHTML = 'Hide Details <i class="fas fa-chevron-up"></i>';
                 this.classList.add('expanded');
                 this.setAttribute('data-expanded', 'true');
@@ -1595,8 +1740,36 @@ function displayDailyForecast(dailyData) {
         // Add detailed tooltip on hover
         dayElement.title = tooltipContent;
         
+        // Add click event listener for individual day toggle
+        dayElement.addEventListener('click', () => toggleDailyDetails(dayElement, index));
+        
         dailyContainer.appendChild(dayElement);
     });
+}
+
+// Toggle details for individual daily forecast item
+function toggleDailyDetails(dayElement, dayIndex) {
+    const detailsElement = dayElement.querySelector('.daily-details');
+    const isCurrentlyShown = detailsElement.classList.contains('show-mobile');
+    
+    if (isCurrentlyShown) {
+        // Hide details for this day
+        detailsElement.classList.remove('show-mobile');
+        dayElement.classList.remove('details-shown');
+    } else {
+        // Show details for this day
+        detailsElement.classList.add('show-mobile');
+        dayElement.classList.add('details-shown');
+        
+        // Scroll to the element smoothly after a short delay for animation
+        setTimeout(() => {
+            dayElement.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'nearest',
+                inline: 'nearest'
+            });
+        }, 200);
+    }
 }
 
 // Switch temperature unit
@@ -1865,4 +2038,354 @@ function convertBasicToOneCallFormat(currentData, forecastData) {
         console.error('Error converting basic API data:', error);
         return null;
     }
-} 
+}
+
+// =============================================================================
+// AUTOCOMPLETE FUNCTIONALITY
+// =============================================================================
+
+// Handle autocomplete input with debouncing
+function handleAutocompleteInput(event) {
+    const query = event.target.value.trim();
+    
+    // Clear previous timeout
+    if (autocompleteTimeout) {
+        clearTimeout(autocompleteTimeout);
+    }
+    
+    // Reset selection index
+    selectedSuggestionIndex = -1;
+    
+    if (query.length < 2) {
+        hideAutocomplete();
+        return;
+    }
+    
+    // Debounce the search to avoid too many API calls
+    autocompleteTimeout = setTimeout(() => {
+        searchCities(query);
+    }, 300);
+}
+
+// Handle keyboard navigation in autocomplete
+function handleAutocompleteKeydown(event) {
+    if (!isAutocompleteVisible || currentSuggestions.length === 0) {
+        return;
+    }
+    
+    switch (event.key) {
+        case 'ArrowDown':
+            event.preventDefault();
+            selectedSuggestionIndex = (selectedSuggestionIndex + 1) % currentSuggestions.length;
+            updateSuggestionHighlight();
+            break;
+            
+        case 'ArrowUp':
+            event.preventDefault();
+            selectedSuggestionIndex = selectedSuggestionIndex <= 0 
+                ? currentSuggestions.length - 1 
+                : selectedSuggestionIndex - 1;
+            updateSuggestionHighlight();
+            break;
+            
+        case 'Enter':
+            event.preventDefault();
+            if (selectedSuggestionIndex >= 0) {
+                selectSuggestion(currentSuggestions[selectedSuggestionIndex]);
+            } else {
+                handleSearch();
+            }
+            break;
+            
+        case 'Escape':
+            hideAutocomplete();
+            locationInput.blur();
+            break;
+    }
+}
+
+// Handle focus on search input
+function handleAutocompleteFocus(event) {
+    const query = event.target.value.trim();
+    if (query.length >= 2 && currentSuggestions.length > 0) {
+        showAutocomplete();
+    }
+}
+
+// Handle clicks outside autocomplete to close it
+function handleClickOutside(event) {
+    if (!event.target.closest('.autocomplete-wrapper')) {
+        hideAutocomplete();
+    }
+}
+
+// Search for cities using OpenWeatherMap Geocoding API
+async function searchCities(query) {
+    try {
+        showAutocompleteLoading();
+        
+        // Check if API key is configured
+        if (WEATHER_API_CONFIG.API_KEY === 'YOUR_API_KEY_HERE') {
+            console.log('API key not configured, showing sample cities');
+            showSampleCities(query);
+            return;
+        }
+
+        const url = `${WEATHER_API_CONFIG.GEOCODING_URL}${WEATHER_API_CONFIG.ENDPOINTS.GEOCODING}?q=${encodeURIComponent(query)}&limit=8&appid=${WEATHER_API_CONFIG.API_KEY}`;
+        
+        console.log(`Searching cities for: "${query}"`);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Geocoding API error: ${response.status}`);
+        }
+        
+        const cities = await response.json();
+        
+        if (cities && cities.length > 0) {
+            // Process and format city data
+            const processedCities = cities.map(city => ({
+                name: city.name,
+                country: city.country,
+                state: city.state || '',
+                lat: city.lat,
+                lon: city.lon,
+                displayName: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`
+            }));
+            
+            currentSuggestions = processedCities;
+            displaySuggestions(processedCities);
+            
+            console.log(`Found ${cities.length} cities for "${query}"`);
+        } else {
+            currentSuggestions = [];
+            showNoResults();
+        }
+        
+    } catch (error) {
+        console.error('Error searching cities:', error);
+        showNoResults();
+    }
+}
+
+// Show sample cities when API is not configured
+function showSampleCities(query) {
+    const sampleCities = [
+        { name: 'Tehran', country: 'IR', state: 'Tehran', lat: 35.6892, lon: 51.3890, displayName: 'Tehran, Tehran, IR' },
+        { name: 'New York', country: 'US', state: 'NY', lat: 40.7128, lon: -74.0060, displayName: 'New York, NY, US' },
+        { name: 'London', country: 'GB', state: '', lat: 51.5074, lon: -0.1278, displayName: 'London, GB' },
+        { name: 'Paris', country: 'FR', state: '', lat: 48.8566, lon: 2.3522, displayName: 'Paris, FR' },
+        { name: 'Tokyo', country: 'JP', state: '', lat: 35.6762, lon: 139.6503, displayName: 'Tokyo, JP' }
+    ].filter(city => 
+        city.name.toLowerCase().includes(query.toLowerCase()) ||
+        city.country.toLowerCase().includes(query.toLowerCase())
+    );
+
+    currentSuggestions = sampleCities;
+    displaySuggestions(sampleCities);
+}
+
+// Display autocomplete suggestions
+function displaySuggestions(cities) {
+    autocompleteDropdown.innerHTML = '';
+    
+    cities.forEach((city, index) => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.dataset.index = index;
+        
+        const flag = COUNTRY_FLAGS[city.country] || '🌍';
+        
+        item.innerHTML = `
+            <div class="city-info">
+                <div class="city-name">${city.name}</div>
+                <div class="city-details">
+                    <span class="country-flag">${flag}</span>
+                    ${city.state ? `${city.state}, ` : ''}${getCountryName(city.country)}
+                </div>
+            </div>
+            <div class="country-code">${city.country}</div>
+        `;
+        
+        // Add click event listener
+        item.addEventListener('click', () => selectSuggestion(city));
+        
+        autocompleteDropdown.appendChild(item);
+    });
+    
+    showAutocomplete();
+    selectedSuggestionIndex = -1;
+}
+
+// Show autocomplete loading state
+function showAutocompleteLoading() {
+    autocompleteDropdown.innerHTML = `
+        <div class="autocomplete-loading">
+            <i class="fas fa-spinner"></i>
+            Searching cities...
+        </div>
+    `;
+    showAutocomplete();
+}
+
+// Show no results message
+function showNoResults() {
+    autocompleteDropdown.innerHTML = `
+        <div class="autocomplete-no-results">
+            <i class="fas fa-search"></i>
+            No cities found. Try a different search term.
+        </div>
+    `;
+    showAutocomplete();
+    currentSuggestions = [];
+}
+
+// Show autocomplete dropdown
+function showAutocomplete() {
+    autocompleteDropdown.classList.remove('hidden');
+    isAutocompleteVisible = true;
+}
+
+// Hide autocomplete dropdown
+function hideAutocomplete() {
+    autocompleteDropdown.classList.add('hidden');
+    isAutocompleteVisible = false;
+    selectedSuggestionIndex = -1;
+}
+
+// Update visual highlight for keyboard navigation
+function updateSuggestionHighlight() {
+    const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+    
+    items.forEach((item, index) => {
+        if (index === selectedSuggestionIndex) {
+            item.classList.add('highlighted');
+        } else {
+            item.classList.remove('highlighted');
+        }
+    });
+}
+
+// Handle suggestion selection
+function selectSuggestion(city) {
+    console.log('City selected from autocomplete:', {
+        name: city.name,
+        country: city.country,
+        state: city.state,
+        coordinates: `${city.lat}, ${city.lon}`
+    });
+    
+    // Update input field
+    locationInput.value = city.displayName;
+    
+    // Hide autocomplete
+    hideAutocomplete();
+    
+    // Update location and fetch weather
+    updateLocationFromAutocomplete(city);
+    
+    // Clear Iranian city selector since user selected from autocomplete
+    iranianCitySelector.value = '';
+    iranianCitySelector.classList.remove('selected');
+    selectedIranianCity = null;
+}
+
+// Update current location based on autocomplete selection
+function updateLocationFromAutocomplete(city) {
+    // Update current location data
+    currentLocation = {
+        name: city.displayName,
+        lat: city.lat,
+        lon: city.lon,
+        country: city.country,
+        state: city.state,
+        source: 'autocomplete'
+    };
+    
+    // Update location display
+    cityNameElement.innerHTML = `
+        <span>${city.name}${city.state ? `, ${city.state}` : ''}</span>
+    `;
+    
+    // Fetch weather data for selected city
+    getWeatherByCoordinates(city.lat, city.lon, {
+        name: city.displayName,
+        source: 'Autocomplete selection',
+        country: city.country
+    });
+}
+
+// Get country name from country code
+function getCountryName(countryCode) {
+    const countryNames = {
+        'IR': 'Iran', 'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada', 'AU': 'Australia',
+        'DE': 'Germany', 'FR': 'France', 'IT': 'Italy', 'ES': 'Spain', 'NL': 'Netherlands',
+        'BE': 'Belgium', 'CH': 'Switzerland', 'AT': 'Austria', 'SE': 'Sweden', 'NO': 'Norway',
+        'DK': 'Denmark', 'FI': 'Finland', 'PL': 'Poland', 'CZ': 'Czech Republic', 'SK': 'Slovakia',
+        'HU': 'Hungary', 'RO': 'Romania', 'BG': 'Bulgaria', 'HR': 'Croatia', 'SI': 'Slovenia',
+        'RS': 'Serbia', 'BA': 'Bosnia and Herzegovina', 'MK': 'North Macedonia', 'AL': 'Albania',
+        'ME': 'Montenegro', 'GR': 'Greece', 'TR': 'Turkey', 'CY': 'Cyprus', 'MT': 'Malta',
+        'PT': 'Portugal', 'LU': 'Luxembourg', 'IE': 'Ireland', 'IS': 'Iceland', 'RU': 'Russia',
+        'UA': 'Ukraine', 'BY': 'Belarus', 'MD': 'Moldova', 'LT': 'Lithuania', 'LV': 'Latvia',
+        'EE': 'Estonia', 'CN': 'China', 'JP': 'Japan', 'KR': 'South Korea', 'IN': 'India',
+        'PK': 'Pakistan', 'AF': 'Afghanistan', 'BD': 'Bangladesh', 'LK': 'Sri Lanka', 'TH': 'Thailand',
+        'MY': 'Malaysia', 'SG': 'Singapore', 'ID': 'Indonesia', 'PH': 'Philippines', 'VN': 'Vietnam',
+        'BR': 'Brazil', 'AR': 'Argentina', 'CL': 'Chile', 'PE': 'Peru', 'CO': 'Colombia',
+        'MX': 'Mexico', 'EG': 'Egypt', 'SA': 'Saudi Arabia', 'AE': 'United Arab Emirates',
+        'QA': 'Qatar', 'BH': 'Bahrain', 'KW': 'Kuwait', 'OM': 'Oman', 'JO': 'Jordan',
+        'LB': 'Lebanon', 'SY': 'Syria', 'IQ': 'Iraq', 'IL': 'Israel', 'ZA': 'South Africa',
+        'NG': 'Nigeria', 'KE': 'Kenya', 'ET': 'Ethiopia', 'MA': 'Morocco', 'DZ': 'Algeria',
+        'TN': 'Tunisia', 'LY': 'Libya'
+    };
+    
+    return countryNames[countryCode] || countryCode;
+}
+
+// =============================================================================
+// END AUTOCOMPLETE FUNCTIONALITY
+// =============================================================================
+
+// =============================================================================
+// THEME FUNCTIONALITY
+// =============================================================================
+
+// Initialize theme on page load
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const body = document.body;
+    const themeIcon = themeToggle.querySelector('i');
+    const themeText = themeToggle.querySelector('.theme-text');
+    
+    if (savedTheme === 'light') {
+        body.setAttribute('data-theme', 'light');
+        themeIcon.className = 'fas fa-sun';
+        themeText.textContent = 'Light';
+    } else {
+        body.removeAttribute('data-theme');
+        themeIcon.className = 'fas fa-moon';
+        themeText.textContent = 'Dark';
+    }
+}
+
+// Toggle between light and dark themes
+function toggleTheme() {
+    const body = document.body;
+    const themeIcon = themeToggle.querySelector('i');
+    const themeText = themeToggle.querySelector('.theme-text');
+    const currentTheme = body.getAttribute('data-theme');
+    
+    if (currentTheme === 'light') {
+        // Switch to dark theme
+        body.removeAttribute('data-theme');
+        themeIcon.className = 'fas fa-moon';
+        themeText.textContent = 'Dark';
+        localStorage.setItem('theme', 'dark');
+    } else {
+        // Switch to light theme
+        body.setAttribute('data-theme', 'light');
+        themeIcon.className = 'fas fa-sun';
+        themeText.textContent = 'Light';
+        localStorage.setItem('theme', 'light');
+    }
+}
