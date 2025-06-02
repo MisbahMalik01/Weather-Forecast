@@ -1388,10 +1388,8 @@ function displayHourlyForecast(hourlyData) {
         hourElement.className = 'hourly-item enhanced';
         hourElement.dataset.index = index;
         
-        const timeString = hour.time.toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            hour12: true 
-        });
+        // Format time using the location's timezone instead of browser's local time
+        const timeString = formatTimeWithTimezone(hour.time, currentWeatherData?.timezone);
         
         const iconClass = weatherIcons[hour.icon] || 'fas fa-question';
         
@@ -1401,9 +1399,9 @@ function displayHourlyForecast(hourlyData) {
         const snowInfo = hour.snow > 0 ? `❄️ ${hour.snow}mm` : '';
         const weatherInfo = [precipitationInfo, snowInfo].filter(info => info).join(' ');
         
-        // Create detailed tooltip content
+        // Create detailed tooltip content with timezone-aware formatting
         const tooltipContent = `
-            Time: ${hour.time.toLocaleString()}
+            Time: ${formatDateTimeWithTimezone(hour.time, currentWeatherData?.timezone)}
             Temperature: ${convertTemperature(hour.temperature)}°
             Feels like: ${convertTemperature(hour.feelsLike)}°
             Condition: ${hour.condition}
@@ -1427,11 +1425,12 @@ function displayHourlyForecast(hourlyData) {
         // Add click event listener for showing details at bottom
         hourElement.addEventListener('click', () => showHourlyDetails(hour, index, hourElement));
         
-        // Add day separator for better UX
-        if (index === 0 || hour.time.getDate() !== hoursData[index - 1].time.getDate()) {
+        // Add day separator for better UX using timezone-aware date
+        if (index === 0 || !isSameDay(hour.time, hoursData[index - 1].time, currentWeatherData?.timezone)) {
             const dayLabel = document.createElement('div');
             dayLabel.className = 'day-separator';
-            dayLabel.innerHTML = `<span>${hour.time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>`;
+            const dayString = formatDateWithTimezone(hour.time, currentWeatherData?.timezone);
+            dayLabel.innerHTML = `<span>${dayString}</span>`;
             hourlyContainer.appendChild(dayLabel);
         }
         
@@ -1489,15 +1488,8 @@ function showHourlyDetails(hourData, index, hourElement) {
     hourElement.classList.add('selected');
     selectedHourlyIndex = index;
     
-    // Update time display
-    detailsTime.textContent = hourData.time.toLocaleString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-    });
+    // Update time display using timezone-aware formatting
+    detailsTime.textContent = formatDetailedDateTimeWithTimezone(hourData.time, currentWeatherData?.timezone);
     
     // Get wind direction
     const windDirection = getWindDirection(hourData.windDirection || 0);
@@ -1901,6 +1893,126 @@ function getWindDirection(degrees) {
     ];
     const index = Math.round(degrees / 22.5) % 16;
     return directions[index];
+}
+
+// Timezone-aware formatting functions for hourly forecast
+function formatTimeWithTimezone(date, timezone) {
+    if (!timezone) {
+        // Fallback to local time if timezone is not available
+        return date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            hour12: true 
+        });
+    }
+    
+    try {
+        return date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            hour12: true,
+            timeZone: timezone
+        });
+    } catch (error) {
+        console.warn('Invalid timezone:', timezone, 'falling back to local time');
+        return date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            hour12: true 
+        });
+    }
+}
+
+function formatDateWithTimezone(date, timezone) {
+    if (!timezone) {
+        return date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+    
+    try {
+        return date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric',
+            timeZone: timezone
+        });
+    } catch (error) {
+        console.warn('Invalid timezone:', timezone, 'falling back to local time');
+        return date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+}
+
+function formatDateTimeWithTimezone(date, timezone) {
+    if (!timezone) {
+        return date.toLocaleString('en-US');
+    }
+    
+    try {
+        return date.toLocaleString('en-US', {
+            timeZone: timezone
+        });
+    } catch (error) {
+        console.warn('Invalid timezone:', timezone, 'falling back to local time');
+        return date.toLocaleString('en-US');
+    }
+}
+
+function formatDetailedDateTimeWithTimezone(date, timezone) {
+    if (!timezone) {
+        return date.toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+    
+    try {
+        return date.toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: timezone
+        });
+    } catch (error) {
+        console.warn('Invalid timezone:', timezone, 'falling back to local time');
+        return date.toLocaleString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+}
+
+function isSameDay(date1, date2, timezone) {
+    if (!timezone) {
+        return date1.getDate() === date2.getDate() && 
+               date1.getMonth() === date2.getMonth() && 
+               date1.getFullYear() === date2.getFullYear();
+    }
+    
+    try {
+        const date1Str = date1.toLocaleDateString('en-US', { timeZone: timezone });
+        const date2Str = date2.toLocaleDateString('en-US', { timeZone: timezone });
+        return date1Str === date2Str;
+    } catch (error) {
+        console.warn('Invalid timezone:', timezone, 'falling back to local comparison');
+        return date1.getDate() === date2.getDate() && 
+               date1.getMonth() === date2.getMonth() && 
+               date1.getFullYear() === date2.getFullYear();
+    }
 }
 
 // Step 6: Main Weather Data Fetching Function
