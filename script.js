@@ -1401,18 +1401,9 @@ function displayHourlyForecast(hourlyData) {
         
         // Create detailed tooltip content with timezone-aware formatting
         const tooltipContent = `
-            Time: ${formatDateTimeWithTimezone(hour.time, currentWeatherData?.timezone)}
-            Temperature: ${convertTemperature(hour.temperature)}°
-            Feels like: ${convertTemperature(hour.feelsLike)}°
-            Condition: ${hour.condition}
-            Humidity: ${hour.humidity}%
-            Wind: ${hour.windSpeed} km/h ${windDirection}
-            Clouds: ${hour.clouds}%
-            ${hour.precipitation > 0 ? `Rain: ${hour.precipitation}mm` : ''}
-            ${hour.snow > 0 ? `Snow: ${hour.snow}mm` : ''}
-            UV Index: ${hour.uvIndex}
         `.trim();
         
+
         hourElement.innerHTML = `
             <span class="hour">${timeString}</span>
             <i class="${iconClass} weather-icon-small"></i>
@@ -1643,21 +1634,6 @@ function displayDailyForecast(dailyData) {
         
         // Create detailed tooltip content
         const tooltipContent = `
-            Date: ${day.date.toLocaleDateString()}
-            High: ${convertTemperature(day.high)}° / Low: ${convertTemperature(day.low)}°
-            Morning: ${convertTemperature(day.morning)}°
-            Evening: ${convertTemperature(day.evening)}°
-            Night: ${convertTemperature(day.night)}°
-            Condition: ${day.condition}
-            Humidity: ${day.humidity}%
-            Wind: ${day.windSpeed} km/h ${windDirection}
-            Clouds: ${day.clouds}%
-            ${day.precipitation > 0 ? `Rain: ${day.precipitation}mm` : ''}
-            ${day.snow > 0 ? `Snow: ${day.snow}mm` : ''}
-            UV Index: ${day.uvIndex}
-            Sunrise: ${day.sunrise.toLocaleTimeString()}
-            Sunset: ${day.sunset.toLocaleTimeString()}
-            Temperature variation: ${tempSpreadText}
         `.trim();
         
         dayElement.innerHTML = `

@@ -1198,7 +1198,7 @@ body {
     padding: 0.5em 0.75em;
     border-radius: 0.625em;
     transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(180, 40, 40, 0.08);
 }
 
 .detail-item-inline:hover {
