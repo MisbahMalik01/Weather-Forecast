@@ -2389,3 +2389,31 @@ function toggleTheme() {
         localStorage.setItem('theme', 'light');
     }
 }
+
+// Step 6: Fetch comprehensive weather data using One Call API 3.0 (paid subscription)
+async function fetchOneCallWeatherData(lat, lon) {
+    try {
+        // Use One Call API 3.0 endpoint
+        const url = `${WEATHER_API_CONFIG.ONECALL_URL}${WEATHER_API_CONFIG.ENDPOINTS.ONECALL}?lat=${lat}&lon=${lon}&appid=${WEATHER_API_CONFIG.API_KEY}&units=${WEATHER_API_CONFIG.DEFAULT_PARAMS.units}&lang=${WEATHER_API_CONFIG.DEFAULT_PARAMS.lang}`;
+        
+        console.log('Fetching comprehensive weather data using One Call API 3.0...');
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`One Call API error: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ One Call API 3.0 data received successfully');
+        return data;
+        
+    } catch (error) {
+        console.error('Error fetching One Call API 3.0 data:', error);
+        
+        // If One Call API fails, fall back to basic APIs
+        console.log('Falling back to basic APIs...');
+        return await fetchBasicWeatherData(lat, lon);
+    }
+}
+
+// Step 6: Get Coordinates from Location Name using OpenWeatherMap Geocoding API
